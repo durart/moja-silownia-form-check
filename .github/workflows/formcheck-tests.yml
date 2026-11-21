@@ -1,0 +1,30 @@
+name: AI Form Check — regression
+on:
+  push:
+    branches:
+      - main
+      - feature/live-form-feedback
+  pull_request:
+    paths:
+      - 'formcheck/**'
+      - 'formcheck.css'
+      - 'tests/**'
+      - '.github/workflows/formcheck-tests.yml'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax
+        run: |
+          node --check formcheck/formcheck-engine.js
+          node --check formcheck/formcheck-library.js
+          node --check formcheck/formcheck-pose.js
+          node --check formcheck/formcheck-ui.js
+      - name: Regression
+        run: node --test tests/*.test.mjs
