@@ -2,7 +2,8 @@
 'use strict';
 const $=id=>document.getElementById(id);
 const engineAPI=root.FormCheckEngine,lib=root.FormCheckLibrary,poseAPI=root.FormCheckPose;
-const connections=[[11,23],[23,25],[25,27],[27,29],[12,24],[24,26],[26,28],[28,30],[11,12],[23,24],[11,13],[12,14],[23,24]];
+const connections=[[11,23],[23,25],[25,27],[27,29],[12,24],[24,26],[26,28],[28,30],[11,12],[23,24],[11,13],[12,14]];
+const palette=Object.freeze({ok:'#48f0a5',warn:'#ffcd66',error:'#ff4f64',unknown:'#4be3f1'});
 let camera=null,engine=null,raf=0,playing=false,stopRequested=false,openResolver=null;
 let lastInference=0,lastVideoTime=-1,frameTimes=[],lastDrawn=null,started=false,delegate='';
 const video=$('fcVideo'),overlay=$('fcOverlay'),canvas=$('fcCanvas'),ctx=canvas.getContext('2d');
@@ -21,28 +22,58 @@ function progress(data){
   text('fcTransfer',Math.round(data.done/1048576*10)/10+' / '+Math.round(data.total/1048576*10)/10+' MB');
  }else{bar.removeAttribute('value');text('fcTransfer','Pobieranie / uruchamianie…')}
 }
-function draw(landmarks){
- if(!landmarks){ctx.clearRect(0,0,canvas.width,canvas.height);return}
- const vw=video.videoWidth||640,vh=video.videoHeight||960;
+function paintSkeleton(landmarks,info,{width=640,height=960}={}){
+ const vw=width,vh=height;
  if(canvas.width!==vw||canvas.height!==vh){canvas.width=vw;canvas.height=vh}
- ctx.clearRect(0,0,vw,vh);ctx.lineWidth=Math.max(3,vw/170);ctx.lineCap='round';
+ ctx.clearRect(0,0,vw,vh);
+ if(!landmarks)return;
+ const side=info?.side==='right'?'right':'left';
+ const knee=side==='right'?26:25,hip=side==='right'?24:23;
+ const ankle=side==='right'?28:27,heel=side==='right'?30:29;
+ const feedback=info?.feedback||{depth:'unknown',heels:'unknown'};
+ function connectionColor(a,b){
+  if((a===hip&&b===knee)||(a===knee&&b===ankle))return palette[feedback.depth];
+  if(a===ankle&&b===heel)return palette[feedback.heels];
+  return '#46f1d0';
+ }
+ ctx.lineCap='round';
  for(const [a,b] of connections){
-  const p=landmarks[a],q=landmarks[b];if(!p||!q||(p.visibility??1)<.6||(q.visibility??1)<.6)continue;
-  ctx.strokeStyle='#46f1d0';ctx.beginPath();ctx.moveTo(p.x*vw,p.y*vh);ctx.lineTo(q.x*vw,q.y*vh);ctx.stroke();
+  const p=landmarks[a],q=landmarks[b];
+  if(!p||!q||(p.visibility??1)<.6||(q.visibility??1)<.6)continue;
+  const monitored=(a===hip&&b===knee)||(a===knee&&b===ankle)||(a===ankle&&b===heel);
+  ctx.lineWidth=Math.max(monitored?5:3,vw/(monitored?105:170));
+  ctx.strokeStyle=connectionColor(a,b);
+  ctx.beginPath();ctx.moveTo(p.x*vw,p.y*vh);ctx.lineTo(q.x*vw,q.y*vh);ctx.stroke();
  }
  for(const n of [11,12,23,24,25,26,27,28,29,30]){
   const p=landmarks[n];if(!p||(p.visibility??1)<.6)continue;
-  ctx.beginPath();ctx.fillStyle=[25,26].includes(n)?'#f9d46f':'#35e6fa';
-  ctx.arc(p.x*vw,p.y*vh,Math.max(4,vw/100),0,Math.PI*2);ctx.fill();
+  let fill='#35e6fa';
+  if(n===knee)fill=palette[feedback.depth];
+  if(n===ankle||n===heel)fill=palette[feedback.heels];
+  ctx.beginPath();ctx.fillStyle=fill;
+  ctx.arc(p.x*vw,p.y*vh,Math.max(n===knee||n===heel?6:4,vw/100),0,Math.PI*2);ctx.fill();
  }
+}
+function liveBadge(id,label,state){
+ const el=$(id);el.dataset.state=state;
+ const symbols={ok:'✓',warn:'!',error:'!',unknown:'–'};
+ el.textContent=symbols[state]+' '+label;
 }
 function present(info){
  text('fcCount',info.repsDetected);
  text('fcKnee',info.kneeAngle==null?'—':Math.round(info.kneeAngle)+'°');
- text('fcLiveStatus',info.message);
+ const feedback=info.feedback||{level:'unknown',depth:'unknown',heels:'unknown',message:''};
+ const level=feedback.level||'unknown';
+ stage.dataset.level=level;
+ liveBadge('fcDepthBadge','Głębokość',feedback.depth||'unknown');
+ liveBadge('fcHeelBadge','Pięty',feedback.heels||'unknown');
+ const status=$('fcLiveStatus');
+ status.dataset.level=level;
+ status.textContent=level==='error'||level==='warn'?feedback.message:info.message;
  if(info.event?.rep)text('fcAdvice',info.event.rep.failed.length?
-  'Sprawdź: '+info.event.rep.failed.map(x=>x==='depth'?'głębokość':'pięty').join(', '):
-  'Powtórzenie wykonane w założonym zakresie.');
+  'Uwaga po powtórzeniu: '+info.event.rep.failed.map(x=>x==='depth'?'głębokość':'pięty').join(', '):
+  'Powtórzenie w założonym zakresie.');
+ else if(level==='error'||level==='warn')text('fcAdvice','Wskazówka orientacyjna — pojedyncza kamera 2D.');
  if(debug)text('fcDebug','Faza: '+info.state+' · '+(info.side||'—')+' · klatki: '+info.validFrames+'/'+info.frames+
   ' · '+delegate+' · FPS: '+(frameTimes.length?Math.round(frameTimes.length*1000/Math.max(1,frameTimes.at(-1)-frameTimes[0])):0));
 }
@@ -81,6 +112,7 @@ function beginOverlay(exercise='Przysiad ze sztangą'){
  stopRequested=false;started=true;lastDrawn=null;frameTimes=[];delegate='';
  text('fcHint',config.cameraHint);text('fcAdvice','System nie zastępuje oceny trenera.');
  text('fcCount','0');text('fcTransfer','');$('fcProgress').removeAttribute('value');
+ stage.dataset.level='unknown';liveBadge('fcDepthBadge','Głębokość','unknown');liveBadge('fcHeelBadge','Pięty','unknown');
  overlay.hidden=false;document.body.classList.add('fc-open');showScreen('initial');
  return new Promise(resolve=>{openResolver=resolve});
 }
@@ -115,35 +147,26 @@ function loop(now){
   const frame=camera.detect(now);
   if(!frame)return;
   stage.style.aspectRatio=frame.width+' / '+frame.height;
-  lastDrawn=frame.landmarks;draw(frame.landmarks);
-  const info=engine.ingest(frame);present(info);
+  const info=engine.ingest(frame);
+  lastDrawn=frame.landmarks;paintSkeleton(frame.landmarks,info,{width:video.videoWidth||640,height:video.videoHeight||960});present(info);
  }catch(e){setStatus('Błąd analizy: '+(e?.message||e));stopCamera();showScreen('initial')}
 }
-function syntheticDisplay(frame){
- const landmarks=frame?.landmarks;
- if(!landmarks)return;
- const dims={width:360,height:640};
- if(canvas.width!==dims.width||canvas.height!==dims.height){canvas.width=dims.width;canvas.height=dims.height}
- // Same 2D drawing as the camera, with a static simulated viewport.
- ctx.clearRect(0,0,canvas.width,canvas.height);
- ctx.strokeStyle='#46f1d0';ctx.lineWidth=3;ctx.lineCap='round';
- for(const [a,b] of connections){let p=landmarks[a],q=landmarks[b];if(!p||!q||(p.visibility??1)<.6||(q.visibility??1)<.6)continue;
-  ctx.beginPath();ctx.moveTo(p.x*canvas.width,p.y*canvas.height);ctx.lineTo(q.x*canvas.width,q.y*canvas.height);ctx.stroke()}
- for(const n of [11,23,25,27,29]){let p=landmarks[n];if(!p)continue;ctx.fillStyle='#35e6fa';ctx.beginPath();ctx.arc(p.x*canvas.width,p.y*canvas.height,5,0,7);ctx.fill()}
-}
-async function simulate(){
+async function simulate(kind='good'){
  if(playing||!engine)return;
+ const allowed=['good','shallow','heels'];
+ if(!allowed.includes(kind))return;
  stopRequested=false;playing=true;delegate='fixture';
  showScreen('live');stage.style.aspectRatio='9 / 16';video.style.display='none';
  $('fcSimBadge').hidden=false;
  try{
-  const response=await fetch('../tests/fixtures/formcheck-squat-good.json',{cache:'no-cache'});
+  const response=await fetch('../tests/fixtures/formcheck-squat-'+kind+'.json',{cache:'no-cache'});
   if(!response.ok)throw Error('Brak syntetycznych sekwencji');
   const fixture=await response.json(),source=poseAPI.createFixtureSource(fixture.frames);
   while(playing&&!stopRequested){
    const frame=source.next();if(!frame)break;
-   syntheticDisplay(frame);present(engine.ingest(frame));
-   await new Promise(resolve=>setTimeout(resolve,38));
+   const info=engine.ingest(frame);
+   paintSkeleton(frame.landmarks,info,{width:360,height:640});present(info);
+   await new Promise(resolve=>setTimeout(resolve,55));
   }
   if(!stopRequested)finish();
  }catch(e){setStatus('Nie można odtworzyć danych testowych: '+(e?.message||e));stopCamera();showScreen('initial')}
@@ -155,7 +178,9 @@ function finish(){
 }
 $('fcOpen').addEventListener('click',()=>{beginOverlay()});
 $('fcStart').addEventListener('click',beginCamera);
-$('fcSim').addEventListener('click',simulate);
+$('fcSim').addEventListener('click',()=>simulate('good'));
+$('fcSimShallow').addEventListener('click',()=>simulate('shallow'));
+$('fcSimHeels').addEventListener('click',()=>simulate('heels'));
 $('fcStop').addEventListener('click',finish);
 $('fcClose').addEventListener('click',terminate);
 $('fcDone').addEventListener('click',terminate);
