@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#07121b">
+<meta name="robots" content="noindex,nofollow">
+<title>AI Form Check — przysiad • TEST (Etap 2)</title>
+<link rel="stylesheet" href="../formcheck.css?v=1">
+</head>
+<body class="sport-performance">
+<main class="fc-demo">
+  <header class="fc-hero">
+    <span class="fc-kicker">OSOBNY PROTOTYP • ETAP 2</span>
+    <h1>AI Form Check <span class="fc-test">TEST</span></h1>
+    <p>Przysiad z widoku bocznego. Rozpoznawanie sylwetki i ruchu bez wysyłania obrazu do serwera.</p>
+  </header>
+  <section class="fc-card">
+    <h2>Co sprawdzisz?</h2>
+    <p>Podgląd kamery, 33 punkty pozy ciała, licznik powtórzeń, głębokość przysiadu i stabilność pięt.</p>
+    <p>Ten prototyp <strong>nie zapisuje filmów ani wyników</strong> i nie łączy się z Twoimi treningami.</p>
+    <button id="fcOpen" class="fc-primary" type="button">📷 Otwórz analizę przysiadu</button>
+    <p class="fc-muted">Możesz też uruchomić symulację bez kamery, aby zobaczyć działanie licznika.</p>
+  </section>
+  <section class="fc-card fc-privacy">
+    <h2>Prywatność i ograniczenia</h2>
+    <p>Obraz jest przetwarzany lokalnie w przeglądarce telefonu; w MVP nie zapisujemy nagrań, zdjęć ani surowych punktów szkieletu. Aby pobrać bibliotekę i model, potrzebne jest połączenie z CDN. Wynik jest eksperymentalny i nie zastępuje oceny trenera.</p>
+  </section>
+</main>
+<div id="fcOverlay" class="fc-overlay" role="dialog" aria-modal="true" aria-label="AI Form Check — test przysiadu" hidden>
+ <div class="fc-shell">
+  <header class="fc-head">
+   <div><small>MOJA SIŁOWNIA · AI FORM CHECK</small><strong>Przysiad — test</strong></div>
+   <button id="fcClose" type="button" class="fc-close" aria-label="Zamknij analizę">✕</button>
+  </header>
+  <section id="fcInitial" class="fc-intro">
+   <h2>Przygotowanie</h2>
+   <p id="fcHint">Ustaw telefon z boku, ok. 3 m od ćwiczącego, na wysokości bioder. Cała sylwetka musi być widoczna.</p>
+   <p class="fc-muted">Pierwsze uruchomienie pobierze model AI. Dalsze użycia mogą korzystać z cache.</p>
+   <button id="fcStart" class="fc-primary" type="button">▶ Włącz kamerę i rozpocznij</button>
+   <button id="fcSim" class="fc-secondary" type="button">🧪 Uruchom symulację 5 przysiadów</button>
+   <div class="fc-load" aria-live="polite">
+    <p id="fcStatus">Wybierz kamerę lub symulację.</p>
+    <progress id="fcProgress" max="100"></progress>
+    <span id="fcTransfer"></span>
+   </div>
+  </section>
+  <section id="fcLive" class="fc-live" hidden>
+   <div class="fc-stage-wrap">
+    <div id="fcStage" class="fc-stage">
+     <video id="fcVideo" playsinline muted autoplay></video>
+     <canvas id="fcCanvas" aria-label="Szkielet wykryty przez AI"></canvas>
+     <div id="fcSimBadge" class="fc-sim-badge" hidden>SYMULACJA — BEZ KAMERY</div>
+     <div class="fc-rep-number"><small>POWTÓRZENIA</small><strong id="fcCount">0</strong></div>
+     <div class="fc-angle">KOLANO <strong id="fcKnee">—</strong></div>
+    </div>
+   </div>
+   <p id="fcLiveStatus" class="fc-live-status" role="status">Ustaw sylwetkę w kadrze</p>
+   <p id="fcAdvice" class="fc-advice">System nie zastępuje oceny trenera.</p>
+   <p id="fcDebug" class="fc-debug" hidden></p>
+   <button id="fcStop" class="fc-primary fc-stop" type="button">■ STOP — podsumowanie</button>
+  </section>
+  <section id="fcResult" class="fc-result" hidden>
+   <p class="fc-kicker">PODSUMOWANIE TESTOWE</p>
+   <h2>Twój wynik serii</h2>
+   <div class="fc-score"><strong id="fcScore">—</strong><span>ocena heurystyczna</span></div>
+   <div class="fc-result-grid">
+    <div><small>Wykryto</small><strong id="fcReps">0</strong></div>
+    <div><small>Bez uwag</small><strong id="fcGood">0</strong></div>
+   </div>
+   <h3>Punkty kontrolne</h3>
+   <div id="fcChecks"></div>
+   <p id="fcIssue"></p>
+   <p id="fcQuality" class="fc-muted"></p>
+   <p class="fc-muted">Kamera 2D nie mierzy wszystkich aspektów biomechaniki. Wynik nie jest diagnozą ani oceną bezpieczeństwa.</p>
+   <button id="fcAgain" type="button" class="fc-secondary">↻ Powtórz test</button>
+   <button id="fcDone" type="button" class="fc-primary">Zamknij bez zapisu</button>
+  </section>
+ </div>
+</div>
+<script src="./formcheck-engine.js" defer></script>
+<script src="./formcheck-library.js" defer></script>
+<script src="./formcheck-pose.js" defer></script>
+<script src="./formcheck-ui.js" defer></script>
+</body>
+</html>
