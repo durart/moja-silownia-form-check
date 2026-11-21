@@ -26,8 +26,8 @@ function makeConfig(raw={}){
 function createSession(rawConfig={}){
  const config=makeConfig(rawConfig);let state='WAIT_TOP',side=null,smooth=null,cycle=null,
   lastTimestamp=-Infinity,lastAngle=null,lastMotionAt=null,invalidSince=null,paused=false,
-  frames=0,validFrames=0,visibilitySum=0,seen=0,startedAt=null,reps=[];
- function resetMotion(){state='WAIT_TOP';cycle=null;smooth=null;lastAngle=null;side=null}
+  frames=0,validFrames=0,visibilitySum=0,seen=0,startedAt=null,reps=[],recentFeedback=null;
+ function resetMotion(){state='WAIT_TOP';cycle=null;smooth=null;lastAngle=null;side=null;recentFeedback=null}
  function ingest(frame){
   const timestamp=Number(frame?.timestamp);
   if(!finite(timestamp)||timestamp<=lastTimestamp)return snapshot('Nieprawidłowy znacznik czasu');
@@ -65,7 +65,7 @@ function createSession(rawConfig={}){
    if(knee>=config.top-3){state='TOP';}
   }else if(state==='TOP'){
    if(knee<config.top-12){
-    state='DOWN';cycle={started:timestamp,downEnd:null,minAngle:knee,
+    recentFeedback=null;state='DOWN';cycle={started:timestamp,downEnd:null,minAngle:knee,
      baseHeelY:fresh.heel.y,height,maxHeelLift:0,minimumFrames:1,
      bottomSeen:false,downMs:null,upMs:null};
    }
@@ -99,8 +99,47 @@ function createSession(rawConfig={}){
    state==='TOP'?'Gotowe — rozpocznij przysiad':state==='DOWN'?'Schodź w dół':
    state==='BOTTOM'?'Góra!':'Wracaj do wyprostu',knee,confidence,event);
  }
+ // Live colors describe only two observable heuristics, not overall exercise safety.
+ function depthState(value){
+  if(!finite(value))return 'unknown';
+  return value<=config.depthOk?'ok':value<=config.depthWarn?'warn':'error';
+ }
+ function heelState(value){
+  if(!finite(value))return 'unknown';
+  return value<=config.heelLimit?'ok':value<=config.heelWarn?'warn':'error';
+ }
+ function getFeedback(kneeAngle,visibility,event){
+  const unknown={level:'unknown',depth:'unknown',heels:'unknown',message:'Ustaw sylwetkę w kadrze'};
+  // Never color an untracked or low-confidence joint as a technique error.
+  if(kneeAngle===null||visibility<config.minVisibility||paused)return unknown;
+  let depth='unknown',heels='unknown';
+  if(cycle){
+   // Depth can be called too shallow only after the ascent has actually begun.
+   if(state==='UP')depth=depthState(cycle.minAngle);
+   else if(state==='BOTTOM'&&cycle.minAngle<=config.depthOk)depth='ok';
+   heels=heelState(cycle.maxHeelLift);
+  }
+  if(event?.rep){
+   depth=depthState(event.rep.values.depth);
+   heels=heelState(event.rep.values.heels);
+   recentFeedback={depth,heels,at:lastTimestamp};
+  }else if(state==='TOP'&&recentFeedback&&lastTimestamp-recentFeedback.at<1800){
+   depth=recentFeedback.depth;heels=recentFeedback.heels;
+  }
+  const level=depth==='error'||heels==='error'?'error':
+   depth==='warn'||heels==='warn'?'warn':
+   depth==='ok'||heels==='ok'?'ok':'unknown';
+  const message=depth==='error'?'Przysiad może być zbyt płytki':
+   heels==='error'?'Możliwe oderwanie pięty':
+   depth==='warn'?'Sprawdź głębokość przysiadu':
+   heels==='warn'?'Obserwuj stabilność pięty':
+   level==='ok'?'Kontrolowany ruch — utrzymaj pozycję':
+   'Analizuję ruch…';
+  return {level,depth,heels,message};
+ }
  function snapshot(message='',kneeAngle=null,visibility=0,event=null){
   return {state,paused,message,kneeAngle,visibility,repsDetected:reps.length,
+   feedback:getFeedback(kneeAngle,visibility,event),
    lastRep:reps.at(-1)||null,event,side,frames,validFrames,
    idleMs:lastMotionAt===null?0:Math.max(0,lastTimestamp-lastMotionAt)};
  }
