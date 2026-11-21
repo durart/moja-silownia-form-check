@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#07121b">
 <meta name="robots" content="noindex,nofollow">
 <title>AI Form Check — przysiad • TEST (Etap 2)</title>
-<link rel="stylesheet" href="../formcheck.css?v=1">
+<link rel="stylesheet" href="../formcheck.css?v=2">
 </head>
 <body class="sport-performance">
 <main class="fc-demo">
@@ -17,7 +17,7 @@
   </header>
   <section class="fc-card">
     <h2>Co sprawdzisz?</h2>
-    <p>Podgląd kamery, 33 punkty pozy ciała, licznik powtórzeń, głębokość przysiadu i stabilność pięt.</p>
+    <p>Podgląd kamery, 33 punkty pozy ciała, licznik powtórzeń, głębokość przysiadu i stabilność pięt oraz ostrzeżenia kolorami na żywo.</p>
     <p>Ten prototyp <strong>nie zapisuje filmów ani wyników</strong> i nie łączy się z Twoimi treningami.</p>
     <button id="fcOpen" class="fc-primary" type="button">📷 Otwórz analizę przysiadu</button>
     <p class="fc-muted">Możesz też uruchomić symulację bez kamery, aby zobaczyć działanie licznika.</p>
@@ -38,7 +38,12 @@
    <p id="fcHint">Ustaw telefon z boku, ok. 3 m od ćwiczącego, na wysokości bioder. Cała sylwetka musi być widoczna.</p>
    <p class="fc-muted">Pierwsze uruchomienie pobierze model AI. Dalsze użycia mogą korzystać z cache.</p>
    <button id="fcStart" class="fc-primary" type="button">▶ Włącz kamerę i rozpocznij</button>
-   <button id="fcSim" class="fc-secondary" type="button">🧪 Uruchom symulację 5 przysiadów</button>
+   <button id="fcSim" class="fc-secondary" type="button">🧪 Symulacja: 5 poprawnych przysiadów</button>
+   <div class="fc-sim-options">
+    <button id="fcSimShallow" class="fc-secondary" type="button">Płytkie przysiady</button>
+    <button id="fcSimHeels" class="fc-secondary" type="button">Unoszenie pięt</button>
+   </div>
+   <p class="fc-muted">Zobacz, jak zielone oznaczenia przechodzą w żółte lub czerwone przy wykryciu nieprawidłowości.</p>
    <div class="fc-load" aria-live="polite">
     <p id="fcStatus">Wybierz kamerę lub symulację.</p>
     <progress id="fcProgress" max="100"></progress>
@@ -51,12 +56,17 @@
      <video id="fcVideo" playsinline muted autoplay></video>
      <canvas id="fcCanvas" aria-label="Szkielet wykryty przez AI"></canvas>
      <div id="fcSimBadge" class="fc-sim-badge" hidden>SYMULACJA — BEZ KAMERY</div>
+     <div class="fc-camera-checks" aria-label="Orientacyjne punkty kontrolne techniki">
+      <span id="fcDepthBadge" class="fc-camera-chip" data-state="unknown">– Głębokość</span>
+      <span id="fcHeelBadge" class="fc-camera-chip" data-state="unknown">– Pięty</span>
+     </div>
      <div class="fc-rep-number"><small>POWTÓRZENIA</small><strong id="fcCount">0</strong></div>
      <div class="fc-angle">KOLANO <strong id="fcKnee">—</strong></div>
     </div>
    </div>
    <p id="fcLiveStatus" class="fc-live-status" role="status">Ustaw sylwetkę w kadrze</p>
    <p id="fcAdvice" class="fc-advice">System nie zastępuje oceny trenera.</p>
+   <p class="fc-legend" aria-label="Legenda kolorów"><span><i class="fc-dot fc-dot-good"></i> W normie</span><span><i class="fc-dot fc-dot-warn"></i> Uwaga</span><span><i class="fc-dot fc-dot-bad"></i> Możliwy błąd</span><span><i class="fc-dot fc-dot-unknown"></i> Brak oceny</span></p>
    <p id="fcDebug" class="fc-debug" hidden></p>
    <button id="fcStop" class="fc-primary fc-stop" type="button">■ STOP — podsumowanie</button>
   </section>
@@ -78,9 +88,9 @@
   </section>
  </div>
 </div>
-<script src="./formcheck-engine.js" defer></script>
+<script src="./formcheck-engine.js?v=2" defer></script>
 <script src="./formcheck-library.js" defer></script>
 <script src="./formcheck-pose.js" defer></script>
-<script src="./formcheck-ui.js" defer></script>
+<script src="./formcheck-ui.js?v=2" defer></script>
 </body>
 </html>
