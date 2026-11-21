@@ -58,3 +58,24 @@ body.fc-open{overflow:hidden}
 @media(max-width:420px){.fc-card{padding:15px}.fc-head strong{font-size:.99rem}.fc-stage-wrap{max-height:58dvh}.fc-stage{max-height:58dvh}.fc-check{flex-direction:column;gap:5px}.fc-rep-number strong{font-size:3.6rem}}
 @media(orientation:landscape) and (max-height:550px){.fc-stage-wrap,.fc-stage{max-height:58vh}.fc-rep-number strong{font-size:2.6rem}}
 @media(prefers-reduced-motion:reduce){.fc-overlay *{transition:none!important;animation:none!important}}
+
+/* Real-time, conservative on-camera feedback for knee depth and heel movement. */
+.fc-stage[data-level="error"]{border-color:#ff5268;box-shadow:0 0 0 2px rgba(255,82,104,.35)}
+.fc-stage[data-level="warn"]{border-color:#ffcd66}
+.fc-stage[data-level="ok"]{border-color:#47dd9e}
+.fc-camera-checks{position:absolute;bottom:10px;left:10px;right:10px;display:flex;gap:7px;flex-wrap:wrap;justify-content:center;pointer-events:none}
+.fc-camera-chip{padding:8px 10px;border-radius:10px;font-weight:850;font-size:clamp(.75rem,2.7vw,.96rem);background:#1d3343e8;color:#cbdde8;border:1px solid #536775;text-shadow:0 1px 0 #001;box-shadow:0 1px 8px #0007}
+.fc-camera-chip[data-state="ok"]{background:#123c30ef;color:#98ffd0;border-color:#35bc88}
+.fc-camera-chip[data-state="warn"]{background:#4e381aec;color:#ffe1a0;border-color:#ffcd66}
+.fc-camera-chip[data-state="error"]{background:#62212eea;color:#fff0f1;border-color:#ff596c}
+.fc-sim-badge{bottom:auto;top:88px}
+.fc-live-status[data-level="error"]{color:#ff6175!important}
+.fc-live-status[data-level="warn"]{color:#ffcd66!important}
+.fc-live-status[data-level="ok"]{color:#8df6be!important}
+.fc-legend{display:flex;gap:8px 12px;flex-wrap:wrap;justify-content:center;margin:8px 0 12px;font-size:.73rem;color:#b4cad5}
+.fc-legend span{display:flex;align-items:center;gap:5px}
+.fc-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#688092}
+.fc-dot-good{background:#48f0a5}.fc-dot-warn{background:#ffcd66}.fc-dot-bad{background:#ff4f64}.fc-dot-unknown{background:#688092}
+.fc-sim-options{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.fc-sim-options button{font-size:.82rem;min-height:48px;line-height:1.2}
+@media(max-width:365px){.fc-camera-chip{padding:6px 8px;font-size:.73rem}.fc-camera-checks{gap:5px}.fc-sim-options{grid-template-columns:1fr}}
