@@ -197,8 +197,8 @@ async function simulate(kind='good'){
   const fixture=await response.json();
   // Camera users have a natural standing calibration period before exercising.
   // Test fixtures begin squatting immediately, so prepend a stationary pre-roll.
-  const first=fixture.frames[0],pre=Array.from({length:15},(_,i)=>
-   {...first,timestamp:first.timestamp+i*100});
+  const first=fixture.frames[0],pre=Array.from({length:15},(_,i)=>(
+   {...first,timestamp:first.timestamp+i*100}));
   const shifted=fixture.frames.map(frame=>({...frame,timestamp:frame.timestamp+1500}));
   const source=poseAPI.createFixtureSource([...pre,...shifted]);
   while(playing&&!stopRequested){
