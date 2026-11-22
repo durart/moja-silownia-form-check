@@ -1,10 +1,10 @@
 (function(root){
 'use strict';
 const $=id=>document.getElementById(id);
-const engineAPI=root.FormCheckEngine,lib=root.FormCheckLibrary,poseAPI=root.FormCheckPose;
+const engineAPI=root.FormCheckEngine,lib=root.FormCheckLibrary,poseAPI=root.FormCheckPose,qualityAPI=root.FormCheckQuality;
 const connections=[[11,23],[23,25],[25,27],[27,29],[12,24],[24,26],[26,28],[28,30],[11,12],[23,24],[11,13],[12,14]];
 const palette=Object.freeze({ok:'#48f0a5',warn:'#ffcd66',error:'#ff4f64',unknown:'#4be3f1'});
-let camera=null,engine=null,raf=0,playing=false,stopRequested=false,openResolver=null;
+let camera=null,engine=null,calibration=null,feedbackFilter=null,exerciseConfig=null,calibratedOnce=false,raf=0,playing=false,stopRequested=false,openResolver=null;
 let lastInference=0,lastVideoTime=-1,frameTimes=[],lastDrawn=null,started=false,delegate='';
 const video=$('fcVideo'),overlay=$('fcOverlay'),canvas=$('fcCanvas'),ctx=canvas.getContext('2d');
 const initial=$('fcInitial'),live=$('fcLive'),result=$('fcResult'),stage=$('fcStage');
@@ -107,12 +107,15 @@ function beginOverlay(exercise='Przysiad ze sztangą'){
  if(openResolver)return Promise.resolve(null);
  const config=lib.find(exercise);
  if(!config){setStatus('Brak konfiguracji dla tego ćwiczenia');return Promise.resolve(null)}
+ exerciseConfig=config;calibratedOnce=false;
+ calibration=qualityAPI.createCalibration();feedbackFilter=qualityAPI.createFeedbackFilter();
  engine=engineAPI.createSession(config);
  video.style.display='';$('fcSimBadge').hidden=true;
  stopRequested=false;started=true;lastDrawn=null;frameTimes=[];delegate='';
  text('fcHint',config.cameraHint);text('fcAdvice','System nie zastępuje oceny trenera.');
  text('fcCount','0');text('fcTransfer','');$('fcProgress').removeAttribute('value');
  stage.dataset.level='unknown';liveBadge('fcDepthBadge','Głębokość','unknown');liveBadge('fcHeelBadge','Pięty','unknown');
+ $('fcCalibration').hidden=false;$('fcCalibrationLabel').textContent='Kalibracja nie rozpoczęta';$('fcCalibrationProgress').value=0;
  overlay.hidden=false;document.body.classList.add('fc-open');showScreen('initial');
  return new Promise(resolve=>{openResolver=resolve});
 }
@@ -135,6 +138,36 @@ async function beginCamera(){
   stopCamera();
  }finally{$('fcStart').disabled=false}
 }
+function analyzeFrame(frame){
+ const quality=calibration.ingest(frame);
+ const progressBar=$('fcCalibrationProgress');
+ progressBar.value=quality.progress;
+ const calibrationCard=$('fcCalibration');
+ calibrationCard.hidden=quality.ok&&calibratedOnce;
+ const label=$('fcCalibrationLabel');
+ label.textContent=quality.ok?'Kalibracja gotowa':quality.message;
+ calibrationCard.dataset.status=quality.status;
+ if(quality.ok&&!calibratedOnce){
+  // A comfortable standing angle helps calibrate the starting position.
+  // Depth and heel thresholds are not personalized without verified biomechanics.
+  const standing=quality.baseline?.standingKnee??175;
+  const top=Math.max(152,Math.min(164,Math.round(standing-12)));
+  engine=engineAPI.createSession({...exerciseConfig,
+   repThresholds:{...exerciseConfig.repThresholds,top}});
+  calibratedOnce=true;
+ }
+ if(!quality.ok){
+  // Invalid views must not contribute to rep counting or technique scoring.
+  if(calibratedOnce)engine.ingest({...frame,landmarks:null});
+  feedbackFilter.reset();
+  const snap=engine.snapshot();
+  return {...snap,state:quality.status,side:quality.side,
+   message:quality.message,kneeAngle:null,feedback:feedbackFilter.snapshot()};
+ }
+ const raw=engine.ingest(frame);
+ const stable=feedbackFilter.update(raw.feedback,raw.kneeAngle!==null&&!raw.paused);
+ return {...raw,feedback:stable};
+}
 function loop(now){
  if(!playing||!camera)return;
  raf=requestAnimationFrame(loop);
@@ -147,7 +180,7 @@ function loop(now){
   const frame=camera.detect(now);
   if(!frame)return;
   stage.style.aspectRatio=frame.width+' / '+frame.height;
-  const info=engine.ingest(frame);
+  const info=analyzeFrame(frame);
   lastDrawn=frame.landmarks;paintSkeleton(frame.landmarks,info,{width:video.videoWidth||640,height:video.videoHeight||960});present(info);
  }catch(e){setStatus('Błąd analizy: '+(e?.message||e));stopCamera();showScreen('initial')}
 }
@@ -161,10 +194,16 @@ async function simulate(kind='good'){
  try{
   const response=await fetch('../tests/fixtures/formcheck-squat-'+kind+'.json',{cache:'no-cache'});
   if(!response.ok)throw Error('Brak syntetycznych sekwencji');
-  const fixture=await response.json(),source=poseAPI.createFixtureSource(fixture.frames);
+  const fixture=await response.json();
+  // Camera users have a natural standing calibration period before exercising.
+  // Test fixtures begin squatting immediately, so prepend a stationary pre-roll.
+  const first=fixture.frames[0],pre=Array.from({length:15},(_,i)=>
+   {...first,timestamp:first.timestamp+i*100});
+  const shifted=fixture.frames.map(frame=>({...frame,timestamp:frame.timestamp+1500}));
+  const source=poseAPI.createFixtureSource([...pre,...shifted]);
   while(playing&&!stopRequested){
    const frame=source.next();if(!frame)break;
-   const info=engine.ingest(frame);
+   const info=analyzeFrame(frame);
    paintSkeleton(frame.landmarks,info,{width:360,height:640});present(info);
    await new Promise(resolve=>setTimeout(resolve,55));
   }
