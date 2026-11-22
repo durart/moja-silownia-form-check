@@ -107,6 +107,34 @@ test('missing pose does not advance calibration progress',()=>{
  assert.equal(state.progress,0);
  assert.equal(state.ready,false);
 });
+for(const [name,expected] of [['good',5],['shallow',2],['heels',1]]){
+ test('full calibrated replay preserves repetition count: '+name,()=>{
+  const fixture=JSON.parse(read('./fixtures/formcheck-squat-'+name+'.json')).frames;
+  const pre=Array.from({length:15},(_,i)=>clone(fixture[0],100+i*100));
+  const frames=[...pre,...fixture.map(f=>clone(f,f.timestamp+1500))];
+  const monitor=FormCheckQuality.createCalibration();
+  const filter=FormCheckQuality.createFeedbackFilter();
+  let engine=FormCheckEngine.createSession(FormCheckLibrary.find('Przysiad ze sztangą'));
+  let activated=false;
+  for(const frame of frames){
+   const q=monitor.ingest(frame);
+   if(q.ok&&!activated){
+    const top=Math.max(152,Math.min(164,Math.round(q.baseline.standingKnee-12)));
+    const config=FormCheckLibrary.find('Przysiad ze sztangą');
+    engine=FormCheckEngine.createSession({...config,repThresholds:{...config.repThresholds,top}});
+    activated=true;
+   }
+   if(q.ok)filter.update(engine.ingest(frame).feedback,true);
+   else if(activated){engine.ingest({...frame,landmarks:null});filter.update(null,false)}
+  }
+  assert.equal(activated,true);
+  const summary=engine.finish();
+  assert.equal(summary.repsDetected,expected);
+  if(name==='good')assert.equal(summary.score,100);
+  if(name==='shallow')assert.equal(summary.mainIssue,'depth');
+  if(name==='heels')assert.equal(summary.mainIssue,'heels');
+ });
+}
 test('UI wires quality module and guidance without writing to storage',()=>{
  const html=read('../formcheck/demo.html');
  const js=read('../formcheck/formcheck-ui.js');
