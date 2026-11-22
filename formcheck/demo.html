@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#07121b">
 <meta name="robots" content="noindex,nofollow">
 <title>AI Form Check — przysiad • TEST (Etap 2)</title>
-<link rel="stylesheet" href="../formcheck.css?v=2">
+<link rel="stylesheet" href="../formcheck.css?v=3">
 </head>
 <body class="sport-performance">
 <main class="fc-demo">
@@ -35,7 +35,7 @@
   </header>
   <section id="fcInitial" class="fc-intro">
    <h2>Przygotowanie</h2>
-   <p id="fcHint">Ustaw telefon z boku, ok. 3 m od ćwiczącego, na wysokości bioder. Cała sylwetka musi być widoczna.</p>
+   <p id="fcHint">Ustaw telefon z boku na wysokości bioder. Zmieść całą sylwetkę i stopy w kadrze. Po uruchomieniu stój spokojnie przez około 1–2 sekundy, aby aplikacja się skalibrowała.</p>
    <p class="fc-muted">Pierwsze uruchomienie pobierze model AI. Dalsze użycia mogą korzystać z cache.</p>
    <button id="fcStart" class="fc-primary" type="button">▶ Włącz kamerę i rozpocznij</button>
    <button id="fcSim" class="fc-secondary" type="button">🧪 Symulacja: 5 poprawnych przysiadów</button>
@@ -64,6 +64,10 @@
      <div class="fc-angle">KOLANO <strong id="fcKnee">—</strong></div>
     </div>
    </div>
+   <div id="fcCalibration" class="fc-calibration" role="status" aria-live="polite">
+    <div class="fc-calibration-head"><strong>Kalibracja sylwetki</strong><span id="fcCalibrationLabel">Stań nieruchomo bokiem do kamery</span></div>
+    <progress id="fcCalibrationProgress" max="100" value="0" aria-label="Postęp kalibracji"></progress>
+   </div>
    <p id="fcLiveStatus" class="fc-live-status" role="status">Ustaw sylwetkę w kadrze</p>
    <p id="fcAdvice" class="fc-advice">System nie zastępuje oceny trenera.</p>
    <p class="fc-legend" aria-label="Legenda kolorów"><span><i class="fc-dot fc-dot-good"></i> W normie</span><span><i class="fc-dot fc-dot-warn"></i> Uwaga</span><span><i class="fc-dot fc-dot-bad"></i> Możliwy błąd</span><span><i class="fc-dot fc-dot-unknown"></i> Brak oceny</span></p>
@@ -91,6 +95,7 @@
 <script src="./formcheck-engine.js?v=2" defer></script>
 <script src="./formcheck-library.js" defer></script>
 <script src="./formcheck-pose.js" defer></script>
-<script src="./formcheck-ui.js?v=2" defer></script>
+<script src="./formcheck-quality.js?v=3" defer></script>
+<script src="./formcheck-ui.js?v=3" defer></script>
 </body>
 </html>
