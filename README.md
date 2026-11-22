@@ -26,3 +26,18 @@ Dodaj `?fcdebug=1` do `/formcheck/demo.html` w celu pokazania FPS, fazy algorytm
 ## Co obejmuje test?
 
 Przysiad ze strony bocznej: wykrycie pozy, szkic 33 punktów, liczenie powtórzeń, ocena głębokości i ruchu pięty. Brak integracji z historią i magazynem Mojej Siłowni.
+
+
+## Etap 3: kalibracja i precyzja
+
+Kalibracja uruchamia się automatycznie po włączeniu kamery. Stań bokiem do telefonu, w całości w kadrze, wyprostuj kolana i pozostań nieruchomo przez około 1–2 sekundy. Podgląd pokazuje postęp i wskazówki, jeśli sylwetka jest zbyt mała, ucięta lub ustawiona przodem.
+
+- Przed zakończeniem kalibracji powtórzenia i błędy techniki nie są oceniane.
+- Kąt startowy jest ostrożnie dostosowany do wykrytej pozycji stojącej (nie zmienia się progu wymaganej głębokości).
+- Kolory ostrzeżeń mają opóźnienie kilku kolejnych wiarygodnych klatek, aby zmniejszyć migotanie i przypadkowe alarmy.
+- Przy utracie kadru ocena znika; po dłuższej utracie pozycji kalibracja może zostać powtórzona automatycznie.
+- Symulacje dodają okres kalibracji przed odtwarzanym ruchem.
+
+**Ograniczenia:** kamera 2D nie mierzy rzeczywistej głębokości 3D ani nacisku pięt na podłoże. Progi pozostają eksperymentalnymi heurystykami, wymagającymi oceny na różnych osobach i urządzeniach. Nie używaj ostrzeżeń jako rozstrzygającej oceny bezpieczeństwa.
+
+Testy: GitHub Actions uruchamia `node --test tests/*.test.mjs` przy zmianach na gałęziach rozwojowych.
